@@ -1,40 +1,4 @@
-Write-Host "==> Iniciando a instalacao do A7 e Notepad++..." -ForegroundColor Cyan
-
-# Cria uma pasta temporária no disco C: para baixar os instaladores
-$tempDir = "C:\TempInstaladores"
-New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
-
-# ----------------------------------------------------------------
-# 1. DEFINA OS LINKS DO SEU GITHUB RELEASES AQUI
-# ----------------------------------------------------------------
-$urlNotepad = "https://github.com/FelipeSouza0/InstaladorAlpha/releases/download/v.1/npp.8.9.2.Installer.x64.exe"
-$urlA7PDV = "https://github.com/FelipeSouza0/InstaladorAlpha/releases/download/v.1/Instalador_A7Pharma-PDV.exe"
-$urlA7Retag = "https://github.com/FelipeSouza0/InstaladorAlpha/releases/download/v.1/Instalador_A7Pharma.exe"
-
-# ----------------------------------------------------------------
-# 2. BAIXANDO OS ARQUIVOS
-# ----------------------------------------------------------------
-Write-Host "Baixando Notepad++..."
-Invoke-WebRequest -Uri $urlNotepad -OutFile "$tempDir\npp.exe"
-
-Write-Host "Baixando A7 PDV..."
-Invoke-WebRequest -Uri $urlA7PDV -OutFile "$tempDir\a7pdv.exe"
-
-Write-Host "Baixando A7 Retaguarda..."
-Invoke-WebRequest -Uri $urlA7Retag -OutFile "$tempDir\a7retag.exe"
-
-# ----------------------------------------------------------------
-# 3. EXECUTANDO AS INSTALAÇÕES (MODO SILENCIOSO)
-# ----------------------------------------------------------------
-Write-Host "Instalando Notepad++..."
-Start-Process -FilePath "$tempDir\npp.exe" -ArgumentList "/S" -Wait -NoNewWindow
-
-Write-Host "Instalando A7 PDV silenciosamente..."
-# Testando o parâmetro silencioso padrão (Inno Setup)
-$argumentosA7 = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
-Start-Process -FilePath "$tempDir\a7pdv.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
-
-Write-Host "Instalando A7 Retaguarda silencClear-Host
+Clear-Host
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host "        INSTALADOR AUTOMATICO - A7 PHARMA         " -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
@@ -48,15 +12,14 @@ function Get-DecodedString ($b64) {
 }
 
 # ----------------------------------------------------------------
-# 1. CONTROLE DE ACESSO POR SENHA (OFUSCADA)
+# 1. CONTROLE DE ACESSO POR SENHA
 # ----------------------------------------------------------------
-# A senha original aqui é "supertux" (letras minúsculas)
+# Senha configurada: supertux
 $senhaOculta = "c3VwZXJ0dXg="
 $senhaCorreta = Get-DecodedString $senhaOculta
 
 $senhaDigitada = Read-Host "Por favor, digite a senha de autorizacao"
 
-# Nota: O operador -cne exige que a senha seja exata (sensível a maiúsculas/minúsculas)
 if ($senhaDigitada -cne $senhaCorreta) {
     Write-Host ""
     Write-Host "[-] ACESSO NEGADO: Senha incorreta!" -ForegroundColor Red
@@ -94,11 +57,11 @@ Write-Host "=> Baixando instalador do Notepad++..." -ForegroundColor Yellow
 Invoke-WebRequest -Uri $urlNotepad -OutFile "$tempDir\npp.exe"
 
 # ----------------------------------------------------------------
-# 4. EXECUTANDO AS INSTALACOES (MODO SILENCIOSO)
+# 4. EXECUTANDO AS INSTALACOES (MODO 100% SILENCIOSO)
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Cyan
-$argumentosA7 = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+$argumentosA7 = "/S"
 Start-Process -FilePath "$tempDir\a7pdv.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
 Write-Host "=> Instalando A7 Retaguarda silenciosamente..." -ForegroundColor Cyan
@@ -118,26 +81,28 @@ if ($desejaConfigurar -match "^[sS]$") {
     Write-Host ""
     Write-Host "=> Iniciando configuracao do PDV..." -ForegroundColor Cyan
 
-    # Perguntas no terminal (Altere ou adicione as perguntas conforme sua necessidade)
-    $ipDigitado = Read-Host "Digite o IP do Servidor (ex: 192.168.0.10)"
+    $ipDigitado = Read-Host "Digite APENAS o IP do Servidor (ex: 192.168.0.10)"
     $caixaDigitado = Read-Host "Digite o Numero do Caixa (ex: 01)"
+    $ipImpressora = Read-Host "Digite o IP do comp. da impressora (ex: 192.168.0.10)"
+    $compImpressora = Read-Host "Digite o Compartilhamento da impressora (ex: epson)"
 
-    # Caminho do arquivo (ATENÇÃO: VERIFIQUE SE ESTE É O CAMINHO REAL NO COMPUTADOR)
+    # Caminho padrão onde o arquivo é gerado
     $caminhoProperties = "C:\A7Pharma\PDV\pdv.properties"
 
-    # Validação e Injeção
     if (Test-Path $caminhoProperties) {
-        Write-Host "Injetando informacoes no arquivo..." -ForegroundColor Yellow
-
+        Write-Host "Injetando informacoes e descomentando campos..." -ForegroundColor Yellow
+        
         $conteudo = Get-Content $caminhoProperties
-
-        # Substituição: Altere "ip.servidor" e "numero.caixa" para as variáveis REAIS do seu arquivo
-        $conteudo = $conteudo -replace "^ip.servidor=.*", "ip.servidor=$ipDigitado"
-        $conteudo = $conteudo -replace "^numero.caixa=.*", "numero.caixa=$caixaDigitado"
-
+        
+        $conteudo = $conteudo -replace "^servidor\.webServicesURL=.*", "servidor.webServicesURL=http://${ipDigitado}:8080/chinchila-chinchila-ejb-core/PDVWebServices?wsdl"
+        $conteudo = $conteudo -replace "^servidor\.numeroCaixa=.*", "servidor.numeroCaixa=$caixaDigitado"
+        $conteudo = $conteudo -replace "^#\s*pdv\.tipoDocumentoFiscal=.*", "pdv.tipoDocumentoFiscal=NFCE"
+        $conteudo = $conteudo -replace "^#\s*impressora\.modelo=.*", "impressora.modelo=epson"
+        $conteudo = $conteudo -replace "^#\s*impressora\.endereco=.*", "impressora.endereco=\\\\${ipImpressora}\\${compImpressora}"
+        
         Set-Content -Path $caminhoProperties -Value $conteudo
-
-        Write-Host "[+] Arquivo pdv.properties configurado com sucesso!" -ForegroundColor Green
+        
+        Write-Host "[+] Arquivo pdv.properties configurado e ativado com sucesso!" -ForegroundColor Green
     } else {
         Write-Host "[-] ERRO: Arquivo pdv.properties nao encontrado no caminho: $caminhoProperties" -ForegroundColor Red
     }
@@ -158,13 +123,3 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host "     [✓] TODOS OS PROGRAMAS FORAM INSTALADOS!     " -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
 Write-Host ""
-iosamente..."
-Start-Process -FilePath "$tempDir\a7retag.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
-
-# ----------------------------------------------------------------
-# 4. LIMPEZA
-# ----------------------------------------------------------------
-Write-Host "Limpando arquivos temporarios..."
-Remove-Item -Path $tempDir -Recurse -Force
-
-Write-Host "==> Instalacao concluida com sucesso!" -ForegroundColor Green
