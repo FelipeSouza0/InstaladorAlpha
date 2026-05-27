@@ -5,7 +5,7 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host ""
 
 # ----------------------------------------------------------------
-# FUNCAO INTERNA DE SEGURANCA (Desembaralha os dados em Base64)
+# FUNCAO INTERNA DE SEGURANCA 
 # ----------------------------------------------------------------
 function Get-DecodedString ($b64) {
     return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
@@ -14,7 +14,6 @@ function Get-DecodedString ($b64) {
 # ----------------------------------------------------------------
 # 1. CONTROLE DE ACESSO POR SENHA
 # ----------------------------------------------------------------
-# Senha configurada: supertux
 $senhaOculta = "c3VwZXJ0dXg="
 $senhaCorreta = Get-DecodedString $senhaOculta
 
@@ -37,7 +36,7 @@ $tempDir = "C:\TempInstaladores"
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
 # ----------------------------------------------------------------
-# 2. LINKS DE DOWNLOAD DIRETO (OFUSCADOS EM BASE64)
+# 2. LINKS DE DOWNLOAD DIRETO 
 # ----------------------------------------------------------------
 $urlA7PDV   = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWRvd25sb2FkJmlkPTFpY3FDNlRnOVBQR1RGazYtNlkteHFqd013eWN2dTZZQg=="
 $urlA7Retag = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWRvd25sb2FkJmlkPTFjZUl0MVdYVTYwRlJBT0pOZTkxZjFUQ3pWekVCYTlvRA=="
