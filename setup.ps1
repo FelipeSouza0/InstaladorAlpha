@@ -5,33 +5,40 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host ""
 
 # ----------------------------------------------------------------
-# FUNCOES INTERNAS
+# FUNCOES INTERNAS E SEGURANCA
 # ----------------------------------------------------------------
 function Get-DecodedString ($b64) {
     return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
 }
 
-# Esta funcao burla a tela de aviso de virus do Google Drive
+# Funcao aprimorada para burlar a tela de aviso do Google Drive
 function Baixar-GoogleDrive {
     param([string]$UrlCompleta, [string]$CaminhoSaida)
     
+    # Forca o uso do drive.google.com no lugar do docs.google.com
+    $UrlCompleta = $UrlCompleta -replace "docs.google.com", "drive.google.com"
+    
     $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     
-    # Faz a primeira tentativa de acesso
+    # 1. Faz a primeira tentativa de acesso
     $req = Invoke-WebRequest -Uri $UrlCompleta -WebSession $session -ErrorAction SilentlyContinue
     
-    # Se o Google barrar com a tela de aviso (conteudo HTML)
-    if ($req.Headers.'Content-Type' -match 'text/html') {
-        # Procura o token de liberacao escondido no codigo da pagina
-        if ($req.Content -match 'confirm=([a-zA-Z0-9_\-]+)') {
-            $token = $matches[1]
-            $novaUrl = $UrlCompleta + "&confirm=$token"
-            Invoke-WebRequest -Uri $novaUrl -WebSession $session -OutFile $CaminhoSaida
-        } else {
-            Write-Host "[-] Nao foi possivel negociar o download com o Google Drive." -ForegroundColor Red
-        }
-    } else {
-        # Se nao barrar, salva o arquivo direto
+    # 2. Verifica se o Google enviou o botão de "Download anyway" (Aviso de tamanho/virus)
+    $linkAviso = $req.Links | Where-Object { $_.href -match 'confirm=' } | Select-Object -ExpandProperty href -First 1
+    
+    if ($linkAviso) {
+        # Se encontrou o botao, pega o link dele, conserta o &amp; e clica (baixa)
+        $urlFinal = "https://drive.google.com" + ($linkAviso -replace '&amp;', '&')
+        Invoke-WebRequest -Uri $urlFinal -WebSession $session -OutFile $CaminhoSaida
+    } 
+    elseif ($req.Content -match 'confirm=([a-zA-Z0-9_\-]+)') {
+        # Plano B: Se o link estiver oculto no JavaScript da pagina
+        $token = $matches[1]
+        $urlFinal = $UrlCompleta + "&confirm=$token"
+        Invoke-WebRequest -Uri $urlFinal -WebSession $session -OutFile $CaminhoSaida
+    } 
+    else {
+        # Se for um arquivo pequeno ou o Google nao barrar, salva o conteudo direto
         [System.IO.File]::WriteAllBytes($CaminhoSaida, $req.Content)
     }
 }
@@ -39,7 +46,6 @@ function Baixar-GoogleDrive {
 # ----------------------------------------------------------------
 # 1. CONTROLE DE ACESSO POR SENHA
 # ----------------------------------------------------------------
-# Senha configurada
 $senhaOculta = "c3VwZXJ0dXg="
 $senhaCorreta = Get-DecodedString $senhaOculta
 
@@ -69,20 +75,20 @@ $urlA7Retag = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWR
 $urlNotepad = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWRvd25sb2FkJmlkPTE1Z3h6MEUzcktJNVdfSkZUN1Jud2F1TkttLXVmVFQ1QQ=="
 
 # ----------------------------------------------------------------
-# 3. BAIXANDO OS ARQUIVOS (USANDO A NOVA FUNCAO)
+# 3. BAIXANDO OS ARQUIVOS
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Baixando instalador do A7 PDV (Isso pode demorar um pouco)..." -ForegroundColor Yellow
 Baixar-GoogleDrive -UrlCompleta $urlA7PDV -CaminhoSaida "$tempDir\a7pdv.exe"
 
-Write-Host "=> Baixando instalador do A7 Retaguarda..." -ForegroundColor Yellow
+Write-Host "=> Baixando instalador do A7 Retaguarda (Isso pode demorar um pouco)..." -ForegroundColor Yellow
 Baixar-GoogleDrive -UrlCompleta $urlA7Retag -CaminhoSaida "$tempDir\a7retag.exe"
 
 Write-Host "=> Baixando instalador do Notepad++..." -ForegroundColor Yellow
 Baixar-GoogleDrive -UrlCompleta $urlNotepad -CaminhoSaida "$tempDir\npp.exe"
 
 # ----------------------------------------------------------------
-# 4. EXECUTANDO AS INSTALACOES (MODO 100% SILENCIOSO)
+# 4. EXECUTANDO AS INSTALACOES (MODO SILENCIOSO)
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Cyan
