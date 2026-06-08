@@ -11,35 +11,46 @@ function Get-DecodedString ($b64) {
     return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
 }
 
-# Funcao aprimorada para burlar a tela de aviso do Google Drive
+# Funcao inteligente baseada em tamanho de arquivo contra travas do Google Drive
 function Baixar-GoogleDrive {
     param([string]$UrlCompleta, [string]$CaminhoSaida)
     
-    # Forca o uso do drive.google.com no lugar do docs.google.com
-    $UrlCompleta = $UrlCompleta -replace "docs.google.com", "drive.google.com"
-    
     $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     
-    # 1. Faz a primeira tentativa de acesso
-    $req = Invoke-WebRequest -Uri $UrlCompleta -WebSession $session -ErrorAction SilentlyContinue
+    # 1. Tenta o download inicial direto pro disco
+    Invoke-WebRequest -Uri $UrlCompleta -WebSession $session -OutFile $CaminhoSaida -UseBasicParsing
     
-    # 2. Verifica se o Google enviou o botão de "Download anyway" (Aviso de tamanho/virus)
-    $linkAviso = $req.Links | Where-Object { $_.href -match 'confirm=' } | Select-Object -ExpandProperty href -First 1
+    # 2. Se o arquivo for menor que 1MB, com certeza eh a pagina de aviso do Google (O PDV real tem 124MB)
+    if ((Get-Item $CaminhoSaida).Length -lt 1MB) {
+        $html = [System.IO.File]::ReadAllText($CaminhoSaida)
+        
+        # Se for realmente a pagina de bloqueio do Google Drive, extrai os tokens ocultos
+        if ($html -match "Google Drive") {
+            $id = ""
+            $uuid = ""
+            $confirm = "t"
+            
+            if ($html -match 'name="id"\s+value="([^"]+)"') { $id = $matches[1] }
+            if ($html -match 'name="uuid"\s+value="([^"]+)"') { $uuid = $matches[1] }
+            if ($html -match 'name="confirm"\s+value="([^"]+)"') { $confirm = $matches[1] }
+            
+            if ($id -and $uuid) {
+                # Monta a URL secreta com o UUID que o Google gerou para esta sessao
+                $urlFinal = "https://drive.usercontent.google.com/download?id=$id&export=download&confirm=$confirm&uuid=$uuid"
+                
+                # Baixa o executavel real por cima do HTML falso
+                Invoke-WebRequest -Uri $urlFinal -WebSession $session -OutFile $CaminhoSaida -UseBasicParsing
+            }
+        }
+    }
     
-    if ($linkAviso) {
-        # Se encontrou o botao, pega o link dele, conserta o &amp; e clica (baixa)
-        $urlFinal = "https://drive.google.com" + ($linkAviso -replace '&amp;', '&')
-        Invoke-WebRequest -Uri $urlFinal -WebSession $session -OutFile $CaminhoSaida
-    } 
-    elseif ($req.Content -match 'confirm=([a-zA-Z0-9_\-]+)') {
-        # Plano B: Se o link estiver oculto no JavaScript da pagina
-        $token = $matches[1]
-        $urlFinal = $UrlCompleta + "&confirm=$token"
-        Invoke-WebRequest -Uri $urlFinal -WebSession $session -OutFile $CaminhoSaida
-    } 
-    else {
-        # Se for um arquivo pequeno ou o Google nao barrar, salva o conteudo direto
-        [System.IO.File]::WriteAllBytes($CaminhoSaida, $req.Content)
+    # 3. Validacao final de seguranca: Se continuar menor que 1MB, o download falhou de verdade
+    if ((Get-Item $CaminhoSaida).Length -lt 1MB) {
+        Write-Host "[-] ERRO CRITICO: Nao foi possivel descarregar o instalador real de: $CaminhoSaida" -ForegroundColor Red
+        Write-Host "[!] O Google Drive bloqueou a automacao. Verifique se o arquivo esta partilhado publicamente." -ForegroundColor Yellow
+        Remove-Item $CaminhoSaida -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 5
+        exit
     }
 }
 
@@ -63,7 +74,7 @@ Write-Host ""
 Write-Host "[+] Senha aceita com sucesso!" -ForegroundColor Green
 Write-Host "[+] Iniciando a preparacao do ambiente..." -ForegroundColor Cyan
 
-# Cria uma pasta temporária no disco C:
+# Cria a pasta temporaria
 $tempDir = "C:\TempInstaladores"
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
@@ -78,10 +89,10 @@ $urlNotepad = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWR
 # 3. BAIXANDO OS ARQUIVOS
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Baixando instalador do A7 PDV (Isso pode demorar um pouco)..." -ForegroundColor Yellow
+Write-Host "=> Baixando instalador do A7 PDV (Aguarde, arquivo grande)..." -ForegroundColor Yellow
 Baixar-GoogleDrive -UrlCompleta $urlA7PDV -CaminhoSaida "$tempDir\a7pdv.exe"
 
-Write-Host "=> Baixando instalador do A7 Retaguarda (Isso pode demorar um pouco)..." -ForegroundColor Yellow
+Write-Host "=> Baixando instalador do A7 Retaguarda (Aguarde)..." -ForegroundColor Yellow
 Baixar-GoogleDrive -UrlCompleta $urlA7Retag -CaminhoSaida "$tempDir\a7retag.exe"
 
 Write-Host "=> Baixando instalador do Notepad++..." -ForegroundColor Yellow
@@ -152,4 +163,4 @@ Write-Host ""
 Write-Host "==================================================" -ForegroundColor Green
 Write-Host "     [✓] TODOS OS PROGRAMAS FORAM INSTALADOS!     " -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
-Write-Host ""    
+Write-Host ""
