@@ -5,6 +5,19 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host ""
 
 # ----------------------------------------------------------------
+# 0. VERIFICACAO DE ADMINISTRADOR (EVITA ERRO DE ELEVACAO)
+# ----------------------------------------------------------------
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host "[-] ERRO: O PowerShell NAO esta executando como Administrador!" -ForegroundColor Red
+    Write-Host "[!] Feche esta janela, clique com o botao direito no PowerShell e escolha 'Executar como Administrador'." -ForegroundColor Yellow
+    Write-Host ""
+    Start-Sleep -Seconds 5
+    exit
+}
+
+# ----------------------------------------------------------------
 # FUNCAO INTERNA DE SEGURANCA (Desembaralha os dados em Base64)
 # ----------------------------------------------------------------
 function Get-DecodedString ($b64) {
@@ -14,7 +27,6 @@ function Get-DecodedString ($b64) {
 # ----------------------------------------------------------------
 # 1. CONTROLE DE ACESSO POR SENHA
 # ----------------------------------------------------------------
-# Senha configurada: 
 $senhaOculta = "c3VwZXJ0dXg="
 $senhaCorreta = Get-DecodedString $senhaOculta
 
@@ -44,17 +56,20 @@ $urlA7Retag = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzIzdW4
 $urlNotepad = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpL3dvdm5jZHZiMnA4cnA5Mmw2anVkMC9ucHAuOC45LjYuMi5JbnN0YWxsZXIueDY0LmV4ZT9ybGtleT1zdjR1ejFoMmt0MWthcTlhcWY4enN1dHpjJnN0PXVpZDV3MHUwJmRsPTE="
 
 # ----------------------------------------------------------------
-# 3. BAIXANDO OS ARQUIVOS
+# 3. BAIXANDO OS ARQUIVOS (MODO TURBO ATIVADO)
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Baixando instalador do A7 PDV..." -ForegroundColor Yellow
+Write-Host "=> Baixando arquivos na velocidade maxima (Aguarde alguns segundos)..." -ForegroundColor Yellow
+
+# Desliga a barra de progresso visual do PowerShell para acelerar o download drásticamente
+$ProgressPreference = 'SilentlyContinue'
+
 Invoke-WebRequest -Uri $urlA7PDV -OutFile "$tempDir\a7pdv.exe" -UseBasicParsing
-
-Write-Host "=> Baixando instalador do A7 Retaguarda..." -ForegroundColor Yellow
 Invoke-WebRequest -Uri $urlA7Retag -OutFile "$tempDir\a7retag.exe" -UseBasicParsing
-
-Write-Host "=> Baixando instalador do Notepad++..." -ForegroundColor Yellow
 Invoke-WebRequest -Uri $urlNotepad -OutFile "$tempDir\npp.exe" -UseBasicParsing
+
+# Religa a barra de progresso caso o sistema precise depois
+$ProgressPreference = 'Continue'
 
 # ----------------------------------------------------------------
 # 4. EXECUTANDO AS INSTALACOES (MODO 100% SILENCIOSO)
@@ -86,8 +101,7 @@ if ($desejaConfigurar -match "^[sS]$") {
     $ipImpressora = Read-Host "Digite o IP do comp. da impressora (ex: 192.168.0.10)"
     $compImpressora = Read-Host "Digite o Compartilhamento da impressora (ex: epson)"
 
-    # Caminho padrão onde o arquivo é gerado
-    $caminhoProperties = "C:\A7Pharma\PDV\pdv.properties"
+    $caminhoProperties = "C:\Alpha7\A7Pharma-PDV\pdv.properties"
 
     if (Test-Path $caminhoProperties) {
         Write-Host "Injetando informacoes e descomentando campos..." -ForegroundColor Yellow
