@@ -14,7 +14,7 @@ function Get-DecodedString ($b64) {
 # ----------------------------------------------------------------
 # 1. CONTROLE DE ACESSO POR SENHA
 # ----------------------------------------------------------------
-# Senha configurada: supertux
+# Senha configurada: 
 $senhaOculta = "c3VwZXJ0dXg="
 $senhaCorreta = Get-DecodedString $senhaOculta
 
