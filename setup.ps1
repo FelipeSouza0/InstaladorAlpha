@@ -5,58 +5,16 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host ""
 
 # ----------------------------------------------------------------
-# FUNCOES INTERNAS E SEGURANCA
+# FUNCAO INTERNA DE SEGURANCA (Desembaralha os dados em Base64)
 # ----------------------------------------------------------------
 function Get-DecodedString ($b64) {
     return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
 }
 
-# Funcao inteligente baseada em tamanho de arquivo contra travas do Google Drive
-function Baixar-GoogleDrive {
-    param([string]$UrlCompleta, [string]$CaminhoSaida)
-    
-    $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-    
-    # 1. Tenta o download inicial direto pro disco
-    Invoke-WebRequest -Uri $UrlCompleta -WebSession $session -OutFile $CaminhoSaida -UseBasicParsing
-    
-    # 2. Se o arquivo for menor que 1MB, com certeza eh a pagina de aviso do Google (O PDV real tem 124MB)
-    if ((Get-Item $CaminhoSaida).Length -lt 1MB) {
-        $html = [System.IO.File]::ReadAllText($CaminhoSaida)
-        
-        # Se for realmente a pagina de bloqueio do Google Drive, extrai os tokens ocultos
-        if ($html -match "Google Drive") {
-            $id = ""
-            $uuid = ""
-            $confirm = "t"
-            
-            if ($html -match 'name="id"\s+value="([^"]+)"') { $id = $matches[1] }
-            if ($html -match 'name="uuid"\s+value="([^"]+)"') { $uuid = $matches[1] }
-            if ($html -match 'name="confirm"\s+value="([^"]+)"') { $confirm = $matches[1] }
-            
-            if ($id -and $uuid) {
-                # Monta a URL secreta com o UUID que o Google gerou para esta sessao
-                $urlFinal = "https://drive.usercontent.google.com/download?id=$id&export=download&confirm=$confirm&uuid=$uuid"
-                
-                # Baixa o executavel real por cima do HTML falso
-                Invoke-WebRequest -Uri $urlFinal -WebSession $session -OutFile $CaminhoSaida -UseBasicParsing
-            }
-        }
-    }
-    
-    # 3. Validacao final de seguranca: Se continuar menor que 1MB, o download falhou de verdade
-    if ((Get-Item $CaminhoSaida).Length -lt 1MB) {
-        Write-Host "[-] ERRO CRITICO: Nao foi possivel descarregar o instalador real de: $CaminhoSaida" -ForegroundColor Red
-        Write-Host "[!] O Google Drive bloqueou a automacao. Verifique se o arquivo esta partilhado publicamente." -ForegroundColor Yellow
-        Remove-Item $CaminhoSaida -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 5
-        exit
-    }
-}
-
 # ----------------------------------------------------------------
 # 1. CONTROLE DE ACESSO POR SENHA
 # ----------------------------------------------------------------
+# Senha configurada: supertux
 $senhaOculta = "c3VwZXJ0dXg="
 $senhaCorreta = Get-DecodedString $senhaOculta
 
@@ -65,7 +23,7 @@ $senhaDigitada = Read-Host "Por favor, digite a senha de autorizacao"
 if ($senhaDigitada -cne $senhaCorreta) {
     Write-Host ""
     Write-Host "[-] ACESSO NEGADO: Senha incorreta!" -ForegroundColor Red
-    Write-Host "[!] A instalacao foi cancelada." -ForegroundColor Yellow
+    Write-Host "[!] A instalacao foi cancelada pelo sistema." -ForegroundColor Yellow
     Start-Sleep -Seconds 3
     exit
 }
@@ -74,32 +32,32 @@ Write-Host ""
 Write-Host "[+] Senha aceita com sucesso!" -ForegroundColor Green
 Write-Host "[+] Iniciando a preparacao do ambiente..." -ForegroundColor Cyan
 
-# Cria a pasta temporaria
+# Cria uma pasta temporária no disco C: para baixar os instaladores
 $tempDir = "C:\TempInstaladores"
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
 # ----------------------------------------------------------------
-# 2. LINKS DE DOWNLOAD DIRETO (OFUSCADOS EM BASE64)
+# 2. LINKS DE DOWNLOAD DIRETO - DROPBOX (OFUSCADOS EM BASE64)
 # ----------------------------------------------------------------
-$urlA7PDV   = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWRvd25sb2FkJmlkPTFpY3FDNlRnOVBQR1RGazYtNlkteHFqd013eWN2dTZZQg=="
-$urlA7Retag = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWRvd25sb2FkJmlkPTFjZUl0MVdYVTYwRlJBT0pOZTkxZjFUQ3pWekVCYTlvRA=="
-$urlNotepad = Get-DecodedString "aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vdWM/ZXhwb3J0PWRvd25sb2FkJmlkPTE1Z3h6MEUzcktJNVdfSkZUN1Jud2F1TkttLXVmVFQ1QQ=="
+$urlA7PDV   = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzRhbzRpazR3aWZ1enk0Z3lmYmM5Yy9BN1BoYXJtYS1QRFYtMy4xMDQuMTEuMC5leGU/cmxrZXk9enV1Mzk4cjIxbXZ6amxlOTl1cGlseTRwaiZzdD1iZ252eDl5NSZkbD0x"
+$urlA7Retag = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzIzdW4xdzNmMTNiZWpuaHZ2bXB0My9JbnN0YWxhZG9yX0E3UGhhcm1hLmV4ZT9ybGtleT16bHRqZTNyZmx0ZnZyNW1mNWR3bHVvaGxlJnN0PW9veWttMXZ3JmRsPTE="
+$urlNotepad = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpL3dvdm5jZHZiMnA4cnA5Mmw2anVkMC9ucHAuOC45LjYuMi5JbnN0YWxsZXIueDY0LmV4ZT9ybGtleT1zdjR1ejFoMmt0MWthcTlhcWY4enN1dHpjJnN0PXVpZDV3MHUwJmRsPTE="
 
 # ----------------------------------------------------------------
 # 3. BAIXANDO OS ARQUIVOS
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Baixando instalador do A7 PDV (Aguarde, arquivo grande)..." -ForegroundColor Yellow
-Baixar-GoogleDrive -UrlCompleta $urlA7PDV -CaminhoSaida "$tempDir\a7pdv.exe"
+Write-Host "=> Baixando instalador do A7 PDV..." -ForegroundColor Yellow
+Invoke-WebRequest -Uri $urlA7PDV -OutFile "$tempDir\a7pdv.exe" -UseBasicParsing
 
-Write-Host "=> Baixando instalador do A7 Retaguarda (Aguarde)..." -ForegroundColor Yellow
-Baixar-GoogleDrive -UrlCompleta $urlA7Retag -CaminhoSaida "$tempDir\a7retag.exe"
+Write-Host "=> Baixando instalador do A7 Retaguarda..." -ForegroundColor Yellow
+Invoke-WebRequest -Uri $urlA7Retag -OutFile "$tempDir\a7retag.exe" -UseBasicParsing
 
 Write-Host "=> Baixando instalador do Notepad++..." -ForegroundColor Yellow
-Baixar-GoogleDrive -UrlCompleta $urlNotepad -CaminhoSaida "$tempDir\npp.exe"
+Invoke-WebRequest -Uri $urlNotepad -OutFile "$tempDir\npp.exe" -UseBasicParsing
 
 # ----------------------------------------------------------------
-# 4. EXECUTANDO AS INSTALACOES (MODO SILENCIOSO)
+# 4. EXECUTANDO AS INSTALACOES (MODO 100% SILENCIOSO)
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Cyan
@@ -113,7 +71,7 @@ Write-Host "=> Instalando Notepad++..." -ForegroundColor Cyan
 Start-Process -FilePath "$tempDir\npp.exe" -ArgumentList "/S" -Wait -NoNewWindow
 
 # ----------------------------------------------------------------
-# 5. CONFIGURANDO O ARQUIVO PDV.PROPERTIES
+# 5. CONFIGURANDO O ARQUIVO PDV.PROPERTIES (OPCIONAL)
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
@@ -128,6 +86,7 @@ if ($desejaConfigurar -match "^[sS]$") {
     $ipImpressora = Read-Host "Digite o IP do comp. da impressora (ex: 192.168.0.10)"
     $compImpressora = Read-Host "Digite o Compartilhamento da impressora (ex: epson)"
 
+    # Caminho padrão onde o arquivo é gerado
     $caminhoProperties = "C:\A7Pharma\PDV\pdv.properties"
 
     if (Test-Path $caminhoProperties) {
@@ -143,13 +102,13 @@ if ($desejaConfigurar -match "^[sS]$") {
         
         Set-Content -Path $caminhoProperties -Value $conteudo
         
-        Write-Host "[+] Arquivo pdv.properties configurado com sucesso!" -ForegroundColor Green
+        Write-Host "[+] Arquivo pdv.properties configurado e ativado com sucesso!" -ForegroundColor Green
     } else {
         Write-Host "[-] ERRO: Arquivo pdv.properties nao encontrado no caminho: $caminhoProperties" -ForegroundColor Red
     }
 } else {
     Write-Host ""
-    Write-Host "[i] Configuracao ignorada." -ForegroundColor Gray
+    Write-Host "[i] Configuracao ignorada. O arquivo pdv.properties foi mantido no padrao." -ForegroundColor Gray
 }
 
 # ----------------------------------------------------------------
