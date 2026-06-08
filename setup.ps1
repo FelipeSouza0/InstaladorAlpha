@@ -152,4 +152,4 @@ Write-Host ""
 Write-Host "==================================================" -ForegroundColor Green
 Write-Host "     [✓] TODOS OS PROGRAMAS FORAM INSTALADOS!     " -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
-Write-Host ""
+Write-Host ""    
