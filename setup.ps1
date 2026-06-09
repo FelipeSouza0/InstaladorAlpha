@@ -56,37 +56,41 @@ $urlA7Retag = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzIzdW4
 $urlNotepad = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpL3dvdm5jZHZiMnA4cnA5Mmw2anVkMC9ucHAuOC45LjYuMi5JbnN0YWxsZXIueDY0LmV4ZT9ybGtleT1zdjR1ejFoMmt0MWthcTlhcWY4enN1dHpjJnN0PXVpZDV3MHUwJmRsPTE="
 
 # ----------------------------------------------------------------
-# 3. BAIXANDO OS ARQUIVOS (MODO TURBO ATIVADO)
+# 3. BAIXANDO OS ARQUIVOS (MODO ULTRA-RAPIDO WebClient)
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Baixando arquivos na velocidade maxima (Aguarde alguns segundos)..." -ForegroundColor Yellow
+Write-Host "=> Baixando instaladores na velocidade MAXIMA da sua internet..." -ForegroundColor Yellow
+Write-Host "[i] A barra de progresso foi desativada propositalmente para evitar lentidao." -ForegroundColor Gray
+Write-Host ""
 
-# Desliga a barra de progresso visual do PowerShell para acelerar o download drásticamente
-$ProgressPreference = 'SilentlyContinue'
+$webClient = New-Object System.Net.WebClient
 
-Invoke-WebRequest -Uri $urlA7PDV -OutFile "$tempDir\a7pdv.exe" -UseBasicParsing
-Invoke-WebRequest -Uri $urlA7Retag -OutFile "$tempDir\a7retag.exe" -UseBasicParsing
-Invoke-WebRequest -Uri $urlNotepad -OutFile "$tempDir\npp.exe" -UseBasicParsing
+Write-Host " -> Baixando A7 PDV (Aguarde alguns segundos)..." -ForegroundColor Cyan
+$webClient.DownloadFile($urlA7PDV, "$tempDir\a7pdv.exe")
 
-# Religa a barra de progresso caso o sistema precise depois
-$ProgressPreference = 'Continue'
+Write-Host " -> Baixando A7 Retaguarda (Aguarde)..." -ForegroundColor Cyan
+$webClient.DownloadFile($urlA7Retag, "$tempDir\a7retag.exe")
+
+Write-Host " -> Baixando Notepad++..." -ForegroundColor Cyan
+$webClient.DownloadFile($urlNotepad, "$tempDir\npp.exe")
 
 # ----------------------------------------------------------------
-# 4. EXECUTANDO AS INSTALACOES (MODO 100% SILENCIOSO)
+# 4. EXECUTANDO AS INSTALACOES (MODO SILENCIOSO)
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Cyan
-$argumentosA7 = "/S"
+Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Yellow
+# Tentativa 2 para o A7: Padrão Windows Installer / MSI
+$argumentosA7 = "/quiet /norestart"
 Start-Process -FilePath "$tempDir\a7pdv.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
-Write-Host "=> Instalando A7 Retaguarda silenciosamente..." -ForegroundColor Cyan
+Write-Host "=> Instalando A7 Retaguarda silenciosamente..." -ForegroundColor Yellow
 Start-Process -FilePath "$tempDir\a7retag.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
-Write-Host "=> Instalando Notepad++..." -ForegroundColor Cyan
+Write-Host "=> Instalando Notepad++..." -ForegroundColor Yellow
 Start-Process -FilePath "$tempDir\npp.exe" -ArgumentList "/S" -Wait -NoNewWindow
 
 # ----------------------------------------------------------------
-# 5. CONFIGURANDO O ARQUIVO PDV.PROPERTIES (OPCIONAL)
+# 5. CONFIGURANDO O ARQUIVO PDV.PROPERTIES
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
@@ -104,19 +108,24 @@ if ($desejaConfigurar -match "^[sS]$") {
     $caminhoProperties = "C:\Alpha7\A7Pharma-PDV\pdv.properties"
 
     if (Test-Path $caminhoProperties) {
-        Write-Host "Injetando informacoes e descomentando campos..." -ForegroundColor Yellow
+        Write-Host "Injetando informacoes e descomentando campos especificos..." -ForegroundColor Yellow
         
         $conteudo = Get-Content $caminhoProperties
         
+        # 1. Altera Servidor e Caixa normalmente
         $conteudo = $conteudo -replace "^servidor\.webServicesURL=.*", "servidor.webServicesURL=http://${ipDigitado}:8080/chinchila-chinchila-ejb-core/PDVWebServices?wsdl"
         $conteudo = $conteudo -replace "^servidor\.numeroCaixa=.*", "servidor.numeroCaixa=$caixaDigitado"
-        $conteudo = $conteudo -replace "^#\s*pdv\.tipoDocumentoFiscal=.*", "pdv.tipoDocumentoFiscal=NFCE"
-        $conteudo = $conteudo -replace "^#\s*impressora\.modelo=.*", "impressora.modelo=epson"
-        $conteudo = $conteudo -replace "^#\s*impressora\.endereco=.*", "impressora.endereco=\\\\${ipImpressora}\\${compImpressora}"
+        
+        # 2. Descomenta EXATAMENTE as linhas da NFCE e Epson (Ignorando SAT, Daruma, etc)
+        $conteudo = $conteudo -replace "^#\s*pdv\.tipoDocumentoFiscal=NFCE", "pdv.tipoDocumentoFiscal=NFCE"
+        $conteudo = $conteudo -replace "^#\s*impressora\.modelo=epson", "impressora.modelo=epson"
+        
+        # 3. Altera APENAS a linha de endereço que contém o texto de exemplo de rede
+        $conteudo = $conteudo -replace "^#\s*impressora\.endereco=.*ENDERECO_IP_MAQUINA.*", "impressora.endereco=\\\\${ipImpressora}\\${compImpressora}"
         
         Set-Content -Path $caminhoProperties -Value $conteudo
         
-        Write-Host "[+] Arquivo pdv.properties configurado e ativado com sucesso!" -ForegroundColor Green
+        Write-Host "[+] Arquivo pdv.properties configurado com precisao!" -ForegroundColor Green
     } else {
         Write-Host "[-] ERRO: Arquivo pdv.properties nao encontrado no caminho: $caminhoProperties" -ForegroundColor Red
     }
