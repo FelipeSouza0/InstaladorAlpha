@@ -79,8 +79,10 @@ $webClient.DownloadFile($urlNotepad, "$tempDir\npp.exe")
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Yellow
-# Tentativa 2 para o A7: Padrão Windows Installer / MSI
-$argumentosA7 = "/quiet /norestart"
+
+# ===> AQUI ESTA A ALTERACAO PARA O PADRAO JAVA <===
+$argumentosA7 = "-q"
+
 Start-Process -FilePath "$tempDir\a7pdv.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
 Write-Host "=> Instalando A7 Retaguarda silenciosamente..." -ForegroundColor Yellow
