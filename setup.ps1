@@ -56,7 +56,7 @@ New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 # 2. LINKS DE DOWNLOAD DIRETO (OFUSCADOS EM BASE64)
 # ----------------------------------------------------------------
 $urlA7PDV = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzRhbzRpazR3aWZ1enk0Z3lmYmM5Yy9BN1BoYXJtYS1QRFYtMy4xMDQuMTEuMC5leGU/cmxrZXk9enV1Mzk4cjIxbXZ6amxlOTl1cGlseTRwaiZzdD1iZ252eDl5NSZkbD0x"
-$urlA7Retag = Get-DecodedString "aHR0cHM6Ly9kb3dubG9hZC5hNy5uZXQuYnIvYXJxdWl2b3MvQWxwaGE3X0NsaWVudF9MaW51eF8zLjEwNC4xMS56aXA="
+$urlA7Retag = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzIzdW4xdzNmMTNiZWpuaHZ2bXB0My9JbnN0YWxhZG9yX0E3UGhhcm1hLmV4ZT9ybGtleT16bHRqZTNyZmx0ZnZyNW1mNWR3bHVvaGxlJnN0PW9veWttMXZ3JmRsPTE="
 $urlNotepad = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpL3dvdm5jZHZiMnA4cnA5Mmw2anVkMC9ucHAuOC45LjYuMi5JbnN0YWxsZXIueDY0LmV4ZT9ybGtleT1zdjR1ejFoMmt0MWthcTlhcWY4enN1dHpjJnN0PXVpZDV3MHUwJmRsPTE="
 
 # ----------------------------------------------------------------
