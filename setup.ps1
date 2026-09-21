@@ -201,12 +201,12 @@ Remove-Item $logoA7Png -Force
 $atalhos = @(
     @{
         Nome = "Alpha7 Suporte"
-        Url = "https://chat.a7.net.br/"
+        Url = "https://kb.a7.net.br/images/favicon.png"
         Icone = $logoA7Ico
     },
     @{
         Nome = "Base de Conhecimento"
-        Url = "https://kb.a7.net.br/P%C3%A1gina_principal"
+        Url = "https://kb.a7.net.br/images/favicon.png"
         Icone = $logoA7Ico
     },
     @{
