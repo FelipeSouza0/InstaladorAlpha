@@ -5,7 +5,7 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host ""
 
 # ----------------------------------------------------------------
-# 0. VERIFICACAO DE ADMINISTRADOR (EVITA ERRO DE ELEVACAO)
+# 0. VERIFICACAO DE ADMINISTRADOR
 # ----------------------------------------------------------------
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
@@ -18,7 +18,7 @@ if (-not $isAdmin) {
 }
 
 # ----------------------------------------------------------------
-# FUNCAO INTERNA DE SEGURANCA (Desembaralha os dados em Base64)
+# FUNCAO INTERNA DE SEGURANCA
 # ----------------------------------------------------------------
 function Get-DecodedString ($b64) {
     return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
@@ -48,7 +48,7 @@ Write-Host ""
 Write-Host "[+] Senha aceita com sucesso!" -ForegroundColor Green
 Write-Host "[+] Iniciando a preparacao do ambiente..." -ForegroundColor Cyan
 
-# Cria uma pasta temporaria no disco C: para baixar os instaladores
+# Cria uma pasta temporaria no disco C:
 $tempDir = "C:\TempInstaladores"
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
@@ -56,16 +56,21 @@ New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 # 2. LINKS DE DOWNLOAD DIRETO (OFUSCADOS EM BASE64)
 # ----------------------------------------------------------------
 $urlA7PDV = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzRhbzRpazR3aWZ1enk0Z3lmYmM5Yy9BN1BoYXJtYS1QRFYtMy4xMDQuMTEuMC5leGU/cmxrZXk9enV1Mzk4cjIxbXZ6amxlOTl1cGlseTRwaiZzdD1iZ252eDl5NSZkbD0x"
-$urlA7Retag = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpLzIzdW4xdzNmMTNiZWpuaHZ2bXB0My9JbnN0YWxhZG9yX0E3UGhhcm1hLmV4ZT9ybGtleT16bHRqZTNyZmx0ZnZyNW1mNWR3bHVvaGxlJnN0PW9veWttMXZ3JmRsPTE="
+
+$urlA7Retag = Get-DecodedString "aHR0cHM6Ly9kb3dubG9hZC5hNy5uZXQuYnIvYXJxdWl2b3MvSW5zdGFsYWRvcl9BN1BoYXJtYS5leGU="
+
 $urlNotepad = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpL3dvdm5jZHZiMnA4cnA5Mmw2anVkMC9ucHAuOC45LjYuMi5JbnN0YWxsZXIueDY0LmV4ZT9ybGtleT1zdjR1ejFoMmt0MWthcTlhcWY4enN1dHpjJnN0PXVpZDV3MHUwJmRsPTE="
 
 # ----------------------------------------------------------------
-# 3. BAIXANDO OS ARQUIVOS (MODO ULTRA-RAPIDO WebClient)
+# 3. BAIXANDO OS ARQUIVOS
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Baixando instaladores na velocidade MAXIMA da sua internet..." -ForegroundColor Yellow
 Write-Host "[i] A barra de progresso foi desativada propositalmente para evitar lentidao." -ForegroundColor Gray
 Write-Host ""
+
+# Evita problemas de conexao HTTPS
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $webClient = New-Object System.Net.WebClient
 
@@ -73,13 +78,15 @@ Write-Host " -> Baixando A7 PDV (Aguarde alguns segundos)..." -ForegroundColor C
 $webClient.DownloadFile($urlA7PDV, "$tempDir\a7pdv.exe")
 
 Write-Host " -> Baixando A7 Retaguarda (Aguarde)..." -ForegroundColor Cyan
-$webClient.DownloadFile($urlA7Retag, "$tempDir\a7retag.zip")
+$webClient.DownloadFile($urlA7Retag, "$tempDir\a7retag.exe")
 
 Write-Host " -> Baixando Notepad++..." -ForegroundColor Cyan
 $webClient.DownloadFile($urlNotepad, "$tempDir\npp.exe")
 
+$webClient.Dispose()
+
 # ----------------------------------------------------------------
-# 4. EXECUTANDO AS INSTALACOES (MODO SILENCIOSO)
+# 4. EXECUTANDO AS INSTALACOES
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Yellow
@@ -88,15 +95,12 @@ $argumentosA7 = "-q"
 
 Start-Process -FilePath "$tempDir\a7pdv.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
-Write-Host "=> Extraindo A7 Retaguarda..." -ForegroundColor Yellow
+Write-Host "=> Instalando A7 Retaguarda silenciosamente..." -ForegroundColor Yellow
 
-$caminhoRetaguarda = "C:\Alpha7\A7Pharma-Retaguarda"
-New-Item -ItemType Directory -Force -Path $caminhoRetaguarda | Out-Null
-Expand-Archive -Path "$tempDir\a7retag.zip" -DestinationPath $caminhoRetaguarda -Force
+Start-Process -FilePath "$tempDir\a7retag.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
-Write-Host "[+] A7 Retaguarda extraido em: $caminhoRetaguarda" -ForegroundColor Green
+Write-Host "=> Instalando Notepad++ silenciosamente..." -ForegroundColor Yellow
 
-Write-Host "=> Instalando Notepad++..." -ForegroundColor Yellow
 Start-Process -FilePath "$tempDir\npp.exe" -ArgumentList "/S" -Wait -NoNewWindow
 
 # ----------------------------------------------------------------
@@ -104,6 +108,7 @@ Start-Process -FilePath "$tempDir\npp.exe" -ArgumentList "/S" -Wait -NoNewWindow
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
+
 $desejaConfigurar = Read-Host "Deseja configurar o arquivo pdv.properties neste momento? (S/N)"
 
 if ($desejaConfigurar -match "^[sS]$") {
@@ -122,24 +127,26 @@ if ($desejaConfigurar -match "^[sS]$") {
 
         $conteudo = Get-Content $caminhoProperties
 
-        # 1. Altera Servidor e Caixa normalmente
+        # Altera o endereco do servidor e numero do caixa
         $conteudo = $conteudo -replace "^servidor\.webServicesURL=.*", "servidor.webServicesURL=http://${ipDigitado}:8080/chinchila-chinchila-ejb-core/PDVWebServices?wsdl"
         $conteudo = $conteudo -replace "^servidor\.numeroCaixa=.*", "servidor.numeroCaixa=$caixaDigitado"
 
-        # 2. Descomenta EXATAMENTE as linhas da NFCE e Epson
+        # Descomenta as configuracoes da NFC-e e impressora Epson
         $conteudo = $conteudo -replace "^#\s*pdv\.tipoDocumentoFiscal=NFCE", "pdv.tipoDocumentoFiscal=NFCE"
         $conteudo = $conteudo -replace "^#\s*impressora\.modelo=epson", "impressora.modelo=epson"
 
-        # 3. Altera APENAS a linha de endereco da impressora
+        # Configura o endereco da impressora
         $conteudo = $conteudo -replace "^#\s*impressora\.endereco=.*ENDERECO_IP_MAQUINA.*", "impressora.endereco=\\${ipImpressora}\${compImpressora}"
 
         Set-Content -Path $caminhoProperties -Value $conteudo
 
         Write-Host "[+] Arquivo pdv.properties configurado com precisao!" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "[-] ERRO: Arquivo pdv.properties nao encontrado no caminho: $caminhoProperties" -ForegroundColor Red
     }
-} else {
+}
+else {
     Write-Host ""
     Write-Host "[i] Configuracao ignorada. O arquivo pdv.properties foi mantido no padrao." -ForegroundColor Gray
 }
@@ -156,17 +163,17 @@ $atalhos = @(
     @{
         Nome = "Alpha7 Suporte"
         Url = "https://chat.a7.net.br/"
-        Icone = "https://chat.a7.net.br/images/favicon.png"
+        Icone = "https://chat.a7.net.br/assets/img/logo_alpha7.png"
     },
     @{
         Nome = "Base de Conhecimento"
         Url = "https://kb.a7.net.br/P%C3%A1gina_principal"
-        Icone = "https://kb.a7.net.br/favicon.ico"
+        Icone = "https://kb.a7.net.br/images/favicon.png"
     },
     @{
         Nome = "Aprenda7"
         Url = "https://aprenda.a7.net.br/login/index.php"
-        Icone = "https://aprenda.a7.net.br/favicon.ico"
+        Icone = "https://aprenda.a7.net.br/pluginfile.php/1/theme_moove/favicon/1783685431/Favicon.ico"
     }
 )
 
@@ -187,6 +194,7 @@ IconIndex=0
 # ----------------------------------------------------------------
 Write-Host ""
 Write-Host "=> Finalizando e limpando arquivos temporarios..." -ForegroundColor Gray
+
 Remove-Item -Path $tempDir -Recurse -Force
 
 Write-Host ""
