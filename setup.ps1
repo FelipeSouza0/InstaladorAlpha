@@ -65,7 +65,7 @@ $urlNotepad = Get-DecodedString "aHR0cHM6Ly93d3cuZHJvcGJveC5jb20vc2NsL2ZpL3dvdm5
 # 3. BAIXANDO OS ARQUIVOS
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Baixando instaladores na velocidade MAXIMA da sua internet..." -ForegroundColor Yellow
+Write-Host "=> Baixando instaladores..." -ForegroundColor Yellow
 Write-Host "[i] A barra de progresso foi desativada propositalmente para evitar lentidao." -ForegroundColor Gray
 Write-Host ""
 
@@ -77,7 +77,7 @@ $webClient = New-Object System.Net.WebClient
 Write-Host " -> Baixando A7 PDV (Aguarde alguns segundos)..." -ForegroundColor Cyan
 $webClient.DownloadFile($urlA7PDV, "$tempDir\a7pdv.exe")
 
-Write-Host " -> Baixando A7 Retaguarda (Aguarde)..." -ForegroundColor Cyan
+Write-Host " -> Baixando A7 Retaguarda (Aguarde alguns segundos)..." -ForegroundColor Cyan
 $webClient.DownloadFile($urlA7Retag, "$tempDir\a7retag.exe")
 
 Write-Host " -> Baixando Notepad++..." -ForegroundColor Cyan
@@ -89,17 +89,17 @@ $webClient.Dispose()
 # 4. EXECUTANDO AS INSTALACOES
 # ----------------------------------------------------------------
 Write-Host ""
-Write-Host "=> Instalando A7 PDV silenciosamente..." -ForegroundColor Yellow
+Write-Host "=> Instalando A7 PDV" -ForegroundColor Yellow
 
 $argumentosA7 = "-q"
 
 Start-Process -FilePath "$tempDir\a7pdv.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
-Write-Host "=> Instalando A7 Retaguarda silenciosamente..." -ForegroundColor Yellow
+Write-Host "=> Instalando A7 Retaguarda" -ForegroundColor Yellow
 
 Start-Process -FilePath "$tempDir\a7retag.exe" -ArgumentList $argumentosA7 -Wait -NoNewWindow
 
-Write-Host "=> Instalando Notepad++ silenciosamente..." -ForegroundColor Yellow
+Write-Host "=> Instalando Notepad++" -ForegroundColor Yellow
 
 Start-Process -FilePath "$tempDir\npp.exe" -ArgumentList "/S" -Wait -NoNewWindow
 
@@ -116,8 +116,8 @@ if ($desejaConfigurar -match "^[sS]$") {
     Write-Host "=> Iniciando configuracao do PDV..." -ForegroundColor Cyan
 
     $ipDigitado = Read-Host "Digite APENAS o IP do Servidor (ex: 192.168.0.10)"
-    $caixaDigitado = Read-Host "Digite o Numero do Caixa (ex: 01)"
-    $ipImpressora = Read-Host "Digite o IP do comp. da impressora (ex: 192.168.0.10)"
+    $caixaDigitado = Read-Host "Digite o Numero do Caixa (ex: 1,2,3)"
+    $ipImpressora = Read-Host "Digite o IP do comp. da impressora (ex: localhost)"
     $compImpressora = Read-Host "Digite o Compartilhamento da impressora (ex: epson)"
 
     $caminhoProperties = "C:\Alpha7\A7Pharma-PDV\pdv.properties"
