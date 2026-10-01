@@ -136,12 +136,12 @@ if ($desejaConfigurar -match "^[sS]$") {
         $conteudo = $conteudo -replace "^#\s*impressora\.modelo=epson", "impressora.modelo=epson"
 
         # Configura o endereco da impressora
-        $conteudo = $conteudo -replace "^#\s*impressora\.endereco=.*ENDERECO_IP_MAQUINA.*", "impressora.endereco=\\${ipImpressora}\${compImpressora}"
+        $conteudo = $conteudo -replace "^#\s*impressora\.endereco=.*ENDERECO_IP_MAQUINA.*", "impressora.endereco=\\\\${ipImpressora}\\${compImpressora}"
 
         Set-Content -Path $caminhoProperties -Value $conteudo
 
         Write-Host "[+] Arquivo pdv.properties configurado com precisao!" -ForegroundColor Green
-    }
+    }\
     else {
         Write-Host "[-] ERRO: Arquivo pdv.properties nao encontrado no caminho: $caminhoProperties" -ForegroundColor Red
     }
