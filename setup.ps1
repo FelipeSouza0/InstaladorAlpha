@@ -141,7 +141,7 @@ if ($desejaConfigurar -match "^[sS]$") {
         Set-Content -Path $caminhoProperties -Value $conteudo
 
         Write-Host "[+] Arquivo pdv.properties configurado com precisao!" -ForegroundColor Green
-    }\
+    }
     else {
         Write-Host "[-] ERRO: Arquivo pdv.properties nao encontrado no caminho: $caminhoProperties" -ForegroundColor Red
     }
@@ -161,16 +161,57 @@ $desktop = [Environment]::GetFolderPath("Desktop")
 $pastaIcones = "C:\ProgramData\A7Pharma\Icones"
 
 New-Item -ItemType Directory -Force -Path $pastaIcones | Out-Null
+Add-Type -AssemblyName System.Drawing
 
-$logoA7Png = "$pastaIcones\Alpha7.png"
-$logoA7Ico = "$pastaIcones\Alpha7.ico"
+# Converte PNG para ICO no tamanho padrao 48x48
+function Convert-PngToIco {
+    param (
+        [string]$OrigemPng,
+        [string]$DestinoIco
+    )
+
+    $imagemOriginal = [System.Drawing.Image]::FromFile($OrigemPng)
+    $imagemRedimensionada = New-Object System.Drawing.Bitmap -ArgumentList 48, 48
+    $grafico = [System.Drawing.Graphics]::FromImage($imagemRedimensionada)
+
+    $grafico.Clear([System.Drawing.Color]::Transparent)
+    $grafico.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+    $grafico.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $grafico.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $grafico.DrawImage($imagemOriginal, 0, 0, 48, 48)
+
+    $icone = [System.Drawing.Icon]::FromHandle($imagemRedimensionada.GetHicon())
+    $arquivoIcone = [System.IO.File]::Open($DestinoIco, [System.IO.FileMode]::Create)
+
+    $icone.Save($arquivoIcone)
+
+    $arquivoIcone.Close()
+    $arquivoIcone.Dispose()
+    $icone.Dispose()
+    $grafico.Dispose()
+    $imagemRedimensionada.Dispose()
+    $imagemOriginal.Dispose()
+}
+
+$suportePng = "$pastaIcones\Suporte.png"
+$suporteIco = "$pastaIcones\Suporte_48.ico"
+
+$kbPng = "$pastaIcones\BaseConhecimento.png"
+$kbIco = "$pastaIcones\BaseConhecimento_48.ico"
+
 $aprendaIco = "$pastaIcones\Aprenda7.ico"
 
 # Baixa os icones oficiais
 $iconClient = New-Object System.Net.WebClient
+
 $iconClient.DownloadFile(
     "https://chat.a7.net.br/assets/img/logo_alpha7.png",
-    $logoA7Png
+    $suportePng
+)
+
+$iconClient.DownloadFile(
+    "https://kb.a7.net.br/images/favicon.png",
+    $kbPng
 )
 
 $iconClient.DownloadFile(
@@ -180,34 +221,24 @@ $iconClient.DownloadFile(
 
 $iconClient.Dispose()
 
-# Converte a logo Alpha7 de PNG para ICO
-Add-Type -AssemblyName System.Drawing
+# Converte os PNGs de 1024x1024 para ICO 48x48
+Convert-PngToIco -OrigemPng $suportePng -DestinoIco $suporteIco
+Convert-PngToIco -OrigemPng $kbPng -DestinoIco $kbIco
 
-$imagem = [System.Drawing.Bitmap]::FromFile($logoA7Png)
-$icone = [System.Drawing.Icon]::FromHandle($imagem.GetHicon())
-$arquivoIcone = New-Object System.IO.FileStream(
-    $logoA7Ico,
-    [System.IO.FileMode]::Create
-)
-
-$icone.Save($arquivoIcone)
-$arquivoIcone.Close()
-$arquivoIcone.Dispose()
-$icone.Dispose()
-$imagem.Dispose()
-
-Remove-Item $logoA7Png -Force
+# Os arquivos PNG nao sao mais necessarios
+Remove-Item $suportePng -Force
+Remove-Item $kbPng -Force
 
 $atalhos = @(
     @{
         Nome = "Alpha7 Suporte"
-        Url = "https://kb.a7.net.br/images/favicon.png"
-        Icone = $logoA7Ico
+        Url = "https://chat.a7.net.br/"
+        Icone = $suporteIco
     },
     @{
         Nome = "Base de Conhecimento"
-        Url = "https://kb.a7.net.br/images/favicon.png"
-        Icone = $logoA7Ico
+        Url = "https://kb.a7.net.br/P%C3%A1gina_principal"
+        Icone = $kbIco
     },
     @{
         Nome = "Aprenda7"
@@ -219,7 +250,7 @@ $atalhos = @(
 foreach ($atalho in $atalhos) {
     $caminhoAtalho = "$desktop\$($atalho.Nome).url"
 
-    # Remove o atalho antigo para evitar cache do icone
+    # Remove o atalho antigo para evitar o cache anterior
     if (Test-Path $caminhoAtalho) {
         Remove-Item $caminhoAtalho -Force
     }
@@ -239,12 +270,20 @@ IconIndex=0
     Write-Host "[+] Atalho criado: $($atalho.Nome)" -ForegroundColor Green
 }
 
-# Solicita ao Windows que atualize os icones
+# Limpa e atualiza o cache de icones do Windows
+Start-Process `
+    -FilePath "$env:SystemRoot\System32\ie4uinit.exe" `
+    -ArgumentList "-ClearIconCache" `
+    -WindowStyle Hidden `
+    -Wait `
+    -ErrorAction SilentlyContinue
+
 Start-Process `
     -FilePath "$env:SystemRoot\System32\ie4uinit.exe" `
     -ArgumentList "-show" `
     -WindowStyle Hidden `
     -ErrorAction SilentlyContinue
+
 # ----------------------------------------------------------------
 # 7. LIMPEZA DOS ARQUIVOS TEMPORARIOS
 # ----------------------------------------------------------------
