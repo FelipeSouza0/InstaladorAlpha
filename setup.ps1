@@ -121,12 +121,25 @@ if ($arquivosJvmArgs) {
     foreach ($arquivoJvmArgs in $arquivosJvmArgs) {
         $conteudoJvmArgs = @(Get-Content -LiteralPath $arquivoJvmArgs.FullName -ErrorAction SilentlyContinue)
 
-        foreach ($argumentoJvm in $argumentosJvm) {
-            $argumentoJaExiste = $conteudoJvmArgs | Where-Object { $_.Trim() -eq $argumentoJvm }
+        $argumentosFaltantes = @(
+            $argumentosJvm | Where-Object {
+                $argumentoVerificado = $_
+                -not ($conteudoJvmArgs | Where-Object { $_.Trim() -eq $argumentoVerificado })
+            }
+        )
 
-            if (-not $argumentoJaExiste) {
+        if ($argumentosFaltantes.Count -gt 0) {
+            # Garante que o primeiro argumento novo comece em uma nova linha
+            $conteudoBrutoJvmArgs = [System.IO.File]::ReadAllText($arquivoJvmArgs.FullName)
+
+            if ($conteudoBrutoJvmArgs.Length -gt 0 -and
+                -not $conteudoBrutoJvmArgs.EndsWith("`r`n") -and
+                -not $conteudoBrutoJvmArgs.EndsWith("`n")) {
+                [System.IO.File]::AppendAllText($arquivoJvmArgs.FullName, [Environment]::NewLine)
+            }
+
+            foreach ($argumentoJvm in $argumentosFaltantes) {
                 Add-Content -LiteralPath $arquivoJvmArgs.FullName -Value $argumentoJvm
-                $conteudoJvmArgs += $argumentoJvm
             }
         }
 
